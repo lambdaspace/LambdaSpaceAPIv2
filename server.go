@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -55,6 +56,21 @@ type Status struct {
 	Lastchange       int64 `json:"lastchange"`
 }
 
+type HackerspaceEvents struct {
+	Title string `json:"title"`
+	Date  string `json:"date"`
+	Begin string `json:"begin"`
+	End   string `json:"end"`
+}
+
+type DiscourseApi struct {
+	TopicList struct {
+		Topics []struct {
+			Title string `json:"title"`
+		} `json:"topics"`
+	} `json:"topic_list"`
+}
+
 func check(err error) {
 	if err != nil {
 		fmt.Println(err)
@@ -99,6 +115,42 @@ func updateStatus(spaceStatus *bool, peoplePresent *int, lastChange *int64) {
 	}
 }
 
+func scheduledEvents() []HackerspaceEvents {
+	var dat DiscourseApi
+	ret := []HackerspaceEvents{}
+	req, err := http.NewRequest("GET", "https://community.lambdaspace.gr/c/5/l/latest.json", strings.NewReader(""))
+	check(err)
+	resp, err := http.DefaultClient.Do(req)
+	check(err)
+	defer resp.Body.Close()
+	b, _ := ioutil.ReadAll(resp.Body)
+	err = json.Unmarshal(b, &dat)
+	check(err)
+	for _, element := range dat.TopicList.Topics {
+		event := HackerspaceEvents{}
+		fields := strings.Fields(element.Title)
+		ryear, err := regexp.Compile(`^\d\d\/\d\d\/\d\d\d\d`)
+		check(err)
+		rhour, err := regexp.Compile(`^\d\d:\d\d`)
+		check(err)
+		if ryear.MatchString(fields[0]) {
+			event.Date = fields[0]
+			if rhour.MatchString(fields[1]) {
+				event.Begin = fields[1]
+				if fields[2] == "-" && rhour.MatchString(fields[3]) {
+					event.End = fields[3]
+					event.Title = strings.Join(fields[4:], " ")
+				} else {
+					event.End = ""
+					event.Title = strings.Join(fields[2:], " ")
+				}
+				ret = append(ret, event)
+			}
+		}
+	}
+	return ret
+}
+
 func main() {
 	e := echo.New()
 
@@ -127,8 +179,8 @@ func main() {
 	})
 
 	// Route to serve events
-	// e.GET("/api/v2.0/events", func(c echo.Context) error {
-	//  return
-	// })
+	e.GET("/api/v2.0/events", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, scheduledEvents())
+	})
 	e.Logger.Fatal(e.Start(":1323"))
 }
