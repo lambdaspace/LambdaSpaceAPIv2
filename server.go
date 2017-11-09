@@ -139,10 +139,10 @@ func scheduledEvents() []HackerspaceEvents {
 				event.Begin = fields[1]
 				if fields[2] == "-" && rhour.MatchString(fields[3]) {
 					event.End = fields[3]
-					event.Title = strings.Join(fields[3:], " ")
+					event.Title = strings.Join(fields[4:], " ")
 				} else {
 					event.End = ""
-					event.Title = strings.Join(fields[1:], " ")
+					event.Title = strings.Join(fields[2:], " ")
 				}
 				ret = append(ret, event)
 			}
