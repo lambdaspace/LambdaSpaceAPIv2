@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo"
 )
@@ -47,6 +48,12 @@ type SpaceDescriptor struct {
 	} `json:"cache"`
 }
 
+type Status struct {
+	Open             bool  `json:"open"`
+	PeopleNowPresent int   `json:"people_now_present"`
+	Lastchange       int64 `json:"lastchange"`
+}
+
 func check(err error) {
 	if err != nil {
 		fmt.Println(err)
@@ -81,22 +88,33 @@ func peopleInSpace() int {
 	return data
 }
 
+// Update the current status of the space
+func updateStatus(spaceStatus *bool, peoplePresent *int, lastChange *int64) {
+	previewPeoplePresent := *peoplePresent
+	*peoplePresent = peopleInSpace()
+	*spaceStatus = *peoplePresent > 0
+	if previewPeoplePresent != *peoplePresent {
+		*lastChange = time.Now().Unix()
+	}
+}
+
 func main() {
 	e := echo.New()
 	spaceDescriptor := getJSONFile("./LambdaSpaceAPI.json")
+	peoplePresent := &spaceDescriptor.Sensors.PeopleNowPresent[0].Value
+	spaceStatus := &spaceDescriptor.State.Open
+	lastChange := &spaceDescriptor.State.Lastchange
+
+	// Route compatible with SpaceApi spec
 	e.GET("/api/v2.0/SpaceAPI", func(c echo.Context) error {
-		// To change the state of the space do:
-		// spaceDescriptor.State.Open = true
-		spaceDescriptor.Sensors.PeopleNowPresent[0].Value = peopleInSpace()
-		spaceDescriptor.State.Open = spaceDescriptor.Sensors.PeopleNowPresent[0].Value > 0
+		updateStatus(spaceStatus, peoplePresent, lastChange)
 		return c.JSON(http.StatusOK, spaceDescriptor)
 	})
 
 	// Route to serve space status
 	e.GET("/api/v2.0/status", func(c echo.Context) error {
-		spaceDescriptor.Sensors.PeopleNowPresent[0].Value = peopleInSpace()
-		spaceDescriptor.State.Open = spaceDescriptor.Sensors.PeopleNowPresent[0].Value > 0
-		return c.JSON(http.StatusOK, spaceDescriptor.State)
+		updateStatus(spaceStatus, peoplePresent, lastChange)
+		return c.JSON(http.StatusOK, Status{*spaceStatus, *peoplePresent, *lastChange})
 	})
 
 	// Route to serve events
