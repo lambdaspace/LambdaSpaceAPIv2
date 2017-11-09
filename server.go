@@ -39,7 +39,9 @@ type SpaceDescriptor struct {
 	} `json:"sensors"`
 	IssueReportChannels []string `json:"issue_report_channels"`
 	Projects            []string `json:"projects"`
-	Cache               string   `json:"cache"`
+	Cache               struct {
+		Schedule string `json:"schedule"`
+	} `json:"cache"`
 }
 
 func check(err error) {

@@ -31,5 +31,7 @@
 		"https://github.com/lambdaspace",
 		"https://community.lambdaspace.gr/c/projects"
 	],
-	"cache": "m.05"
+	"cache": {
+		"schedule": "m.05"
+	}
 }
