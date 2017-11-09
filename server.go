@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 )
 
 type PeopleNowPresent struct {
@@ -100,6 +101,14 @@ func updateStatus(spaceStatus *bool, peoplePresent *int, lastChange *int64) {
 
 func main() {
 	e := echo.New()
+
+	// Echo middlewares
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowMethods: []string{echo.GET},
+	}))
+
 	spaceDescriptor := getJSONFile("./LambdaSpaceAPI.json")
 	peoplePresent := &spaceDescriptor.Sensors.PeopleNowPresent[0].Value
 	spaceStatus := &spaceDescriptor.State.Open
