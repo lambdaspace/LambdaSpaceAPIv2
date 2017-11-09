@@ -30,11 +30,12 @@ type SpaceDescriptor struct {
 		Lastchange int64 `json:"lastchange"`
 	} `json:"state"`
 	Contact struct {
-		Email    string `json:"email"`
-		Irc      string `json:"irc"`
-		Ml       string `json:"ml"`
-		Twitter  string `json:"twitter"`
-		Facebook string `json:"facebook"`
+		Email      string `json:"email"`
+		Irc        string `json:"irc"`
+		Ml         string `json:"ml"`
+		Twitter    string `json:"twitter"`
+		Facebook   string `json:"facebook"`
+		Foursquare string `json:"foursquare"`
 	} `json:"contact"`
 	Sensors struct {
 		PeopleNowPresent []PeopleNowPresent `json:"people_now_present"`

@@ -12,7 +12,9 @@
 		"email": "info@lambdaspace.gr",
 		"irc": "",
 		"ml": "",
-		"twitter": "@LambdaSpace"
+		"twitter": "@LambdaSpace",
+		"facebook": "https://www.facebook.com/lambdaspace",
+		"foursquare": "54f30c92498e6540d9015b2b"
 	},
 	"state": {
 		"open": false
