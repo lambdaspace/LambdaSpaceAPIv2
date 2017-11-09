@@ -91,20 +91,17 @@ func main() {
 		spaceDescriptor.State.Open = spaceDescriptor.Sensors.PeopleNowPresent[0].Value > 0
 		return c.JSON(http.StatusOK, spaceDescriptor)
 	})
-	e.GET("/api/v2.0/hackers", func(c echo.Context) error {
-		// To change the number of hackers in the space do:
-		spaceDescriptor.Sensors.PeopleNowPresent[0].Value = peopleInSpace()
-		return c.JSON(http.StatusOK, spaceDescriptor.Sensors.PeopleNowPresent[0])
-	})
+
 	// Route to serve space status
-	e.GET("/api/v2.0/state", func(c echo.Context) error {
+	e.GET("/api/v2.0/status", func(c echo.Context) error {
 		spaceDescriptor.Sensors.PeopleNowPresent[0].Value = peopleInSpace()
 		spaceDescriptor.State.Open = spaceDescriptor.Sensors.PeopleNowPresent[0].Value > 0
 		return c.JSON(http.StatusOK, spaceDescriptor.State)
 	})
+
 	// Route to serve events
 	// e.GET("/api/v2.0/events", func(c echo.Context) error {
-	// 	return
+	//  return
 	// })
 	e.Logger.Fatal(e.Start(":1323"))
 }
