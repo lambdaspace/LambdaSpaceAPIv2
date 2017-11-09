@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 )
 
 type PeopleNowPresent struct {
@@ -30,11 +32,12 @@ type SpaceDescriptor struct {
 		Lastchange int64 `json:"lastchange"`
 	} `json:"state"`
 	Contact struct {
-		Email    string `json:"email"`
-		Irc      string `json:"irc"`
-		Ml       string `json:"ml"`
-		Twitter  string `json:"twitter"`
-		Facebook string `json:"facebook"`
+		Email      string `json:"email"`
+		Irc        string `json:"irc"`
+		Ml         string `json:"ml"`
+		Twitter    string `json:"twitter"`
+		Facebook   string `json:"facebook"`
+		Foursquare string `json:"foursquare"`
 	} `json:"contact"`
 	Sensors struct {
 		PeopleNowPresent []PeopleNowPresent `json:"people_now_present"`
@@ -44,6 +47,12 @@ type SpaceDescriptor struct {
 	Cache               struct {
 		Schedule string `json:"schedule"`
 	} `json:"cache"`
+}
+
+type Status struct {
+	Open             bool  `json:"open"`
+	PeopleNowPresent int   `json:"people_now_present"`
+	Lastchange       int64 `json:"lastchange"`
 }
 
 func check(err error) {
@@ -80,30 +89,46 @@ func peopleInSpace() int {
 	return data
 }
 
+// Update the current status of the space
+func updateStatus(spaceStatus *bool, peoplePresent *int, lastChange *int64) {
+	previewPeoplePresent := *peoplePresent
+	*peoplePresent = peopleInSpace()
+	*spaceStatus = *peoplePresent > 0
+	if previewPeoplePresent != *peoplePresent {
+		*lastChange = time.Now().Unix()
+	}
+}
+
 func main() {
 	e := echo.New()
+
+	// Echo middlewares
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowMethods: []string{echo.GET},
+	}))
+
 	spaceDescriptor := getJSONFile("./LambdaSpaceAPI.json")
+	peoplePresent := &spaceDescriptor.Sensors.PeopleNowPresent[0].Value
+	spaceStatus := &spaceDescriptor.State.Open
+	lastChange := &spaceDescriptor.State.Lastchange
+
+	// Route compatible with SpaceApi spec
 	e.GET("/api/v2.0/SpaceAPI", func(c echo.Context) error {
-		// To change the state of the space do:
-		// spaceDescriptor.State.Open = true
-		spaceDescriptor.Sensors.PeopleNowPresent[0].Value = peopleInSpace()
-		spaceDescriptor.State.Open = spaceDescriptor.Sensors.PeopleNowPresent[0].Value > 0
+		updateStatus(spaceStatus, peoplePresent, lastChange)
 		return c.JSON(http.StatusOK, spaceDescriptor)
 	})
-	e.GET("/api/v2.0/hackers", func(c echo.Context) error {
-		// To change the number of hackers in the space do:
-		spaceDescriptor.Sensors.PeopleNowPresent[0].Value = peopleInSpace()
-		return c.JSON(http.StatusOK, spaceDescriptor.Sensors.PeopleNowPresent[0])
-	})
+
 	// Route to serve space status
-	e.GET("/api/v2.0/state", func(c echo.Context) error {
-		spaceDescriptor.Sensors.PeopleNowPresent[0].Value = peopleInSpace()
-		spaceDescriptor.State.Open = spaceDescriptor.Sensors.PeopleNowPresent[0].Value > 0
-		return c.JSON(http.StatusOK, spaceDescriptor.State)
+	e.GET("/api/v2.0/status", func(c echo.Context) error {
+		updateStatus(spaceStatus, peoplePresent, lastChange)
+		return c.JSON(http.StatusOK, Status{*spaceStatus, *peoplePresent, *lastChange})
 	})
+
 	// Route to serve events
 	// e.GET("/api/v2.0/events", func(c echo.Context) error {
-	// 	return
+	//  return
 	// })
 	e.Logger.Fatal(e.Start(":1323"))
 }
