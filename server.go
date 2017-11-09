@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/labstack/echo"
 )
@@ -62,9 +64,20 @@ func readFile(fileName string) []byte {
 func getJSONFile(fileName string) (jsonFile SpaceDescriptor) {
 	tmp := readFile(fileName)
 	err := json.Unmarshal(tmp, &jsonFile)
-	fmt.Println(jsonFile)
 	check(err)
 	return
+}
+
+// Get number of people in space
+func peopleInSpace() int {
+	req, err := http.NewRequest("GET", "https://lambdaspace.gr/hackers.txt", strings.NewReader(""))
+	check(err)
+	resp, err := http.DefaultClient.Do(req)
+	check(err)
+	defer resp.Body.Close()
+	b, _ := ioutil.ReadAll(resp.Body)
+	data, _ := strconv.Atoi(string(b))
+	return data
 }
 
 func main() {
@@ -73,16 +86,20 @@ func main() {
 	e.GET("/api/v2.0/SpaceAPI", func(c echo.Context) error {
 		// To change the state of the space do:
 		// spaceDescriptor.State.Open = true
+		spaceDescriptor.Sensors.PeopleNowPresent[0].Value = peopleInSpace()
+		spaceDescriptor.State.Open = spaceDescriptor.Sensors.PeopleNowPresent[0].Value > 0
 		return c.JSON(http.StatusOK, spaceDescriptor)
 	})
 	e.GET("/api/v2.0/hackers", func(c echo.Context) error {
 		// To change the number of hackers in the space do:
-		// spaceDescriptor.Sensors.PeopleNowPresent = []PeopleNowPresent{
-		// 	PeopleNowPresent{
-		// 		Value: 5,
-		// 	},
-		// }
-		return c.JSON(http.StatusOK, spaceDescriptor.Sensors.PeopleNowPresent)
+		spaceDescriptor.Sensors.PeopleNowPresent[0].Value = peopleInSpace()
+		return c.JSON(http.StatusOK, spaceDescriptor.Sensors.PeopleNowPresent[0])
+	})
+	// Route to serve space status
+	e.GET("/api/v2.0/state", func(c echo.Context) error {
+		spaceDescriptor.Sensors.PeopleNowPresent[0].Value = peopleInSpace()
+		spaceDescriptor.State.Open = spaceDescriptor.Sensors.PeopleNowPresent[0].Value > 0
+		return c.JSON(http.StatusOK, spaceDescriptor.State)
 	})
 	// Route to serve events
 	// e.GET("/api/v2.0/events", func(c echo.Context) error {
