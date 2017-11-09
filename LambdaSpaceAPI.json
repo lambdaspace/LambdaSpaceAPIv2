@@ -1,39 +1,37 @@
 {
-	"api": "0.13",
-	"space": "Lambdaspace",
-	"logo": "https://www.lambdaspace.gr/dist/favicons/apple-touch-icon.png",
-	"url": "https://www.lambdaspace.gr",
-	"location": {
-		"address": "Ionos Dragoumi 39 - 6th floor Thessaloniki, 546 30, Greece",
-		"lon": 40.6373204,
-		"lat": 22.9394253
-	},
-	"contact": {
-		"email": "info@lambdaspace.gr",
-		"irc": "",
-		"ml": "",
-		"twitter": "@LambdaSpace",
-		"facebook": "https://www.facebook.com/lambdaspace",
-		"foursquare": "54f30c92498e6540d9015b2b"
-	},
-	"state": {
-		"open": false
-	},
-    "sensors" : {
-        "people_now_present": [
-            {
-                "value": 0
-            }
-        ]
-    },
-	"issue_report_channels": [
-		"twitter"
-	],
-	"projects" : [
-		"https://github.com/lambdaspace",
-		"https://community.lambdaspace.gr/c/projects"
-	],
-	"cache": {
-		"schedule": "m.05"
-	}
+  "api": "0.13",
+  "space": "Lambdaspace",
+  "logo": "https://www.lambdaspace.gr/dist/favicons/apple-touch-icon.png",
+  "url": "https://www.lambdaspace.gr",
+  "location": {
+    "address": "Ionos Dragoumi 39 - 6th floor Thessaloniki, 546 30, Greece",
+    "lon": 40.6373204,
+    "lat": 22.9394253
+  },
+  "contact": {
+    "email": "info@lambdaspace.gr",
+    "irc": "",
+    "ml": "",
+    "twitter": "@LambdaSpace",
+    "facebook": "https://www.facebook.com/lambdaspace",
+    "foursquare": "54f30c92498e6540d9015b2b"
+  },
+  "state": {
+    "open": false
+  },
+  "sensors": {
+    "people_now_present": [
+      {
+        "value": 0
+      }
+    ]
+  },
+  "issue_report_channels": ["twitter"],
+  "projects": [
+    "https://github.com/lambdaspace",
+    "https://community.lambdaspace.gr/c/projects"
+  ],
+  "cache": {
+    "schedule": "m.05"
+  }
 }
