@@ -8,6 +8,7 @@ import (
   "regexp"
   "strconv"
   "strings"
+  "sync"
   "time"
 
   "github.com/labstack/echo"
@@ -19,6 +20,7 @@ type PeopleNowPresent struct {
 }
 
 type SpaceDescriptor struct {
+  sync.RWMutex
   API      string `json:"api"`
   Space    string `json:"space"`
   Logo     string `json:"logo"`
@@ -71,6 +73,32 @@ type DiscourseApi struct {
   } `json:"topic_list"`
 }
 
+var (
+  lastChange      *int64
+  peoplePresent   *int
+  spaceDescriptor SpaceDescriptor
+  spaceStatus     *bool
+  spaceEvents     struct {
+    sync.RWMutex
+    Events []HackerspaceEvents `json:"events"`
+  }
+)
+
+func init() {
+  spaceDescriptor = getJSONFile("./LambdaSpaceAPI.json")
+  peoplePresent = &spaceDescriptor.Sensors.PeopleNowPresent[0].Value
+  spaceStatus = &spaceDescriptor.State.Open
+  lastChange = &spaceDescriptor.State.Lastchange
+  go func() {
+    go updateStatus()
+    go getScheduledEvents(1)
+    for range time.Tick(time.Minute * 5) {
+      go updateStatus()
+      go getScheduledEvents(1)
+    }
+  }()
+}
+
 func check(err error) {
   if err != nil {
     fmt.Println(err)
@@ -93,39 +121,48 @@ func getJSONFile(fileName string) (jsonFile SpaceDescriptor) {
   return
 }
 
+// Make a http request and return it's body
+func fetchHttpResource(requestUrl string) []byte {
+  request, err := http.NewRequest("GET", requestUrl, strings.NewReader(""))
+  check(err)
+  response, err := http.DefaultClient.Do(request)
+  check(err)
+  defer response.Body.Close()
+  responseBody, err := ioutil.ReadAll(response.Body)
+  check(err)
+  return responseBody
+}
+
 // Get number of people in space
 func peopleInSpace() int {
-  req, err := http.NewRequest("GET", "https://lambdaspace.gr/hackers.txt", strings.NewReader(""))
+  response := fetchHttpResource("https://lambdaspace.gr/hackers.txt")
+  data, err := strconv.Atoi(string(response))
   check(err)
-  resp, err := http.DefaultClient.Do(req)
-  check(err)
-  defer resp.Body.Close()
-  b, _ := ioutil.ReadAll(resp.Body)
-  data, _ := strconv.Atoi(string(b))
   return data
 }
 
 // Update the current status of the space
-func updateStatus(spaceStatus *bool, peoplePresent *int, lastChange *int64) {
+func updateStatus() {
+  spaceDescriptor.Lock()
   previewPeoplePresent := *peoplePresent
   *peoplePresent = peopleInSpace()
   *spaceStatus = *peoplePresent > 0
   if previewPeoplePresent != *peoplePresent {
     *lastChange = time.Now().Unix()
   }
+  spaceDescriptor.Unlock()
 }
 
-func scheduledEvents() []HackerspaceEvents {
-  var dat DiscourseApi
+// Get upcoming events
+func getScheduledEvents(page int) {
+  dat := DiscourseApi{}
   ret := []HackerspaceEvents{}
-  req, err := http.NewRequest("GET", "https://community.lambdaspace.gr/c/5/l/latest.json", strings.NewReader(""))
+
+  requestUrl := fmt.Sprintf("https://community.lambdaspace.gr/c/events.json?page=%v", page)
+  response := fetchHttpResource(requestUrl)
+  err := json.Unmarshal(response, &dat)
   check(err)
-  resp, err := http.DefaultClient.Do(req)
-  check(err)
-  defer resp.Body.Close()
-  b, _ := ioutil.ReadAll(resp.Body)
-  err = json.Unmarshal(b, &dat)
-  check(err)
+
   for _, element := range dat.TopicList.Topics {
     event := HackerspaceEvents{}
     fields := strings.Fields(element.Title)
@@ -133,6 +170,7 @@ func scheduledEvents() []HackerspaceEvents {
     check(err)
     rhour, err := regexp.Compile(`^\d\d:\d\d`)
     check(err)
+
     if ryear.MatchString(fields[0]) {
       event.Date = fields[0]
       if rhour.MatchString(fields[1]) {
@@ -148,7 +186,11 @@ func scheduledEvents() []HackerspaceEvents {
       }
     }
   }
-  return ret
+  if len(ret) > 0 {
+    spaceEvents.Lock()
+    spaceEvents.Events = ret
+    spaceEvents.Unlock()
+  }
 }
 
 func main() {
@@ -161,26 +203,25 @@ func main() {
     AllowMethods: []string{echo.GET},
   }))
 
-  spaceDescriptor := getJSONFile("./LambdaSpaceAPI.json")
-  peoplePresent := &spaceDescriptor.Sensors.PeopleNowPresent[0].Value
-  spaceStatus := &spaceDescriptor.State.Open
-  lastChange := &spaceDescriptor.State.Lastchange
-
   // Route compatible with SpaceApi spec
   e.GET("/api/v2.0/SpaceAPI", func(c echo.Context) error {
-    updateStatus(spaceStatus, peoplePresent, lastChange)
+    spaceDescriptor.RLock()
+    defer spaceDescriptor.RUnlock()
     return c.JSON(http.StatusOK, spaceDescriptor)
   })
 
   // Route to serve space status
   e.GET("/api/v2.0/status", func(c echo.Context) error {
-    updateStatus(spaceStatus, peoplePresent, lastChange)
+    spaceDescriptor.RLock()
+    defer spaceDescriptor.RUnlock()
     return c.JSON(http.StatusOK, Status{*spaceStatus, *peoplePresent, *lastChange})
   })
 
   // Route to serve events
   e.GET("/api/v2.0/events", func(c echo.Context) error {
-    return c.JSON(http.StatusOK, scheduledEvents())
+    spaceEvents.RLock()
+    defer spaceEvents.RUnlock()
+    return c.JSON(http.StatusOK, spaceEvents)
   })
   e.Logger.Fatal(e.Start(":1323"))
 }
