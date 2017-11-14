@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -101,7 +102,7 @@ func init() {
 
 func check(err error) {
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 		// panic(err)
 	}
 }
@@ -122,8 +123,9 @@ func getJSONFile(fileName string) (jsonFile SpaceDescriptor) {
 }
 
 // Make a http request and return it's body
-func fetchHttpResource(requestUrl string) []byte {
-	request, err := http.NewRequest("GET", requestUrl, strings.NewReader(""))
+
+func fetchHTTPResource(requestURL string) []byte {
+	request, err := http.NewRequest("GET", requestURL, strings.NewReader(""))
 	check(err)
 	response, err := http.DefaultClient.Do(request)
 	check(err)
@@ -135,7 +137,7 @@ func fetchHttpResource(requestUrl string) []byte {
 
 // Get number of people in space
 func peopleInSpace() int {
-	response := fetchHttpResource("https://lambdaspace.gr/hackers.txt")
+	response := fetchHTTPResource("https://lambdaspace.gr/hackers.txt")
 	data, err := strconv.Atoi(string(response))
 	check(err)
 	return data
@@ -158,8 +160,8 @@ func getScheduledEvents(page int) {
 	dat := DiscourseApi{}
 	ret := []HackerspaceEvents{}
 
-	requestUrl := fmt.Sprintf("https://community.lambdaspace.gr/c/events.json?page=%v", page)
-	response := fetchHttpResource(requestUrl)
+	requestURL := fmt.Sprintf("https://community.lambdaspace.gr/c/events.json?page=%v", page)
+	response := fetchHTTPResource(requestURL)
 	err := json.Unmarshal(response, &dat)
 	check(err)
 
