@@ -209,7 +209,7 @@ func main() {
 	e.GET("/api/v2.0/SpaceAPI", func(c echo.Context) error {
 		spaceDescriptor.RLock()
 		defer spaceDescriptor.RUnlock()
-		return c.JSON(http.StatusOK, spaceDescriptor)
+		return c.JSON(http.StatusOK, &spaceDescriptor)
 	})
 
 	// Route to serve space status
@@ -223,7 +223,7 @@ func main() {
 	e.GET("/api/v2.0/events", func(c echo.Context) error {
 		spaceEvents.RLock()
 		defer spaceEvents.RUnlock()
-		return c.JSON(http.StatusOK, spaceEvents)
+		return c.JSON(http.StatusOK, &spaceEvents)
 	})
 	e.Logger.Fatal(e.Start(":1323"))
 }
