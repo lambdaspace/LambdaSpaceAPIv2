@@ -225,5 +225,12 @@ func main() {
 		defer spaceEvents.RUnlock()
 		return c.JSON(http.StatusOK, &spaceEvents)
 	})
-	e.Logger.Fatal(e.Start(":1323"))
+
+	// Add custom httpServer so we can add timeouts to requests
+	httpServer := &http.Server{
+		Addr:         ":1323",
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
+	e.Logger.Fatal(e.StartServer(httpServer))
 }
