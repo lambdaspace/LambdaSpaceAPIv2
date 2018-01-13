@@ -22,7 +22,7 @@ func TestSpaceApi(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	spaceAPIRoute(c)
+	spaceAPIRouteHandler(c)
 
 	if http.StatusOK != rec.Code {
 		t.Errorf("expected status OK, got %v", rec.Code)
@@ -43,6 +43,11 @@ func TestSpaceApi(t *testing.T) {
 		t.Errorf("Got error while trying to convert spaceDescriptor to json . Error: %v", err)
 	}
 	requestData, err := json.Marshal(spaceAPIValidatorFormat{string(spaceDescriptorStringified)})
+
+	if err != nil {
+		t.Errorf("Got error while trying to create request for spaceDescriptor. Error: %v", err)
+	}
+
 	res, err := http.Post("https://validator.spacedirectory.org/v1/validate/", "application/json", bytes.NewBuffer(requestData))
 
 	if res.StatusCode != http.StatusOK {
