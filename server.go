@@ -102,7 +102,7 @@ func init() {
 
 func check(err error) {
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 		// panic(err)
 	}
 }
@@ -124,20 +124,25 @@ func getJSONFile(fileName string) (jsonFile SpaceDescriptor) {
 
 // Make a http request and return it's body
 
-func fetchHTTPResource(requestURL string) []byte {
-	request, err := http.NewRequest("GET", requestURL, strings.NewReader(""))
-	check(err)
-	response, err := http.DefaultClient.Do(request)
+func fetchHTTPResource(requestURL string) ([]byte, error) {
+	httpClient := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	response, err := httpClient.Get(requestURL)
 	check(err)
 	defer response.Body.Close()
 	responseBody, err := ioutil.ReadAll(response.Body)
 	check(err)
-	return responseBody
+	return responseBody, err
 }
 
 // Get number of people in space
 func peopleInSpace() int {
-	response := fetchHTTPResource("https://lambdaspace.gr/hackers.txt")
+	response, err := fetchHTTPResource("https://lambdaspace.gr/hackers.txt")
+	if err != nil {
+		log.Print(err)
+		return -1
+	}
 	data, err := strconv.Atoi(string(response))
 	check(err)
 	return data
@@ -161,8 +166,12 @@ func getScheduledEvents(page int) {
 	ret := []HackerspaceEvents{}
 
 	requestURL := fmt.Sprintf("https://community.lambdaspace.gr/c/events.json?page=%v", page)
-	response := fetchHTTPResource(requestURL)
-	err := json.Unmarshal(response, &dat)
+	response, err := fetchHTTPResource(requestURL)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	err = json.Unmarshal(response, &dat)
 	check(err)
 
 	for _, element := range dat.TopicList.Topics {
@@ -195,6 +204,12 @@ func getScheduledEvents(page int) {
 	}
 }
 
+func spaceAPIRouteHandler(c echo.Context) error {
+	spaceDescriptor.RLock()
+	defer spaceDescriptor.RUnlock()
+	return c.JSON(http.StatusOK, &spaceDescriptor)
+}
+
 func main() {
 	e := echo.New()
 
@@ -206,11 +221,7 @@ func main() {
 	}))
 
 	// Route compatible with SpaceApi spec
-	e.GET("/api/v2.0/SpaceAPI", func(c echo.Context) error {
-		spaceDescriptor.RLock()
-		defer spaceDescriptor.RUnlock()
-		return c.JSON(http.StatusOK, &spaceDescriptor)
-	})
+	e.GET("/api/v2.0/SpaceAPI", spaceAPIRouteHandler)
 
 	// Route to serve space status
 	e.GET("/api/v2.0/status", func(c echo.Context) error {
