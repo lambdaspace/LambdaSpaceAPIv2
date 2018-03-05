@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -92,10 +91,10 @@ func init() {
 	lastChange = &spaceDescriptor.State.Lastchange
 	go func() {
 		go updateStatus()
-		go getScheduledEvents(1)
+		go getScheduledEvents()
 		for range time.Tick(time.Minute * 5) {
 			go updateStatus()
-			go getScheduledEvents(1)
+			go getScheduledEvents()
 		}
 	}()
 }
@@ -161,12 +160,11 @@ func updateStatus() {
 }
 
 // Get upcoming events
-func getScheduledEvents(page int) {
+func getScheduledEvents() {
 	dat := DiscourseApi{}
 	ret := []HackerspaceEvents{}
 
-	requestURL := fmt.Sprintf("https://community.lambdaspace.gr/c/events.json?page=%v", page)
-	response, err := fetchHTTPResource(requestURL)
+	response, err := fetchHTTPResource("https://community.lambdaspace.gr/c/events.json")
 	if err != nil {
 		log.Print(err)
 		return
