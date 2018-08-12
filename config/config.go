@@ -7,7 +7,7 @@ import (
 	"github.com/joeshaw/envdecode"
 )
 
-type configuration struct {
+type Configuration struct {
 	Mqtt struct {
 		Broker struct {
 			Host string `env:"BROKER_HOST,default=localhost"`
@@ -18,11 +18,12 @@ type configuration struct {
 }
 
 var (
-	configInstance = configuration{}
+	configInstance = Configuration{}
 	configOnce     sync.Once
 )
 
-func Load() configuration {
+// Load loads app configuration from env variables using defaults
+func Load() Configuration {
 	configOnce.Do(func() {
 		err := envdecode.Decode(&configInstance)
 		if err != nil {
