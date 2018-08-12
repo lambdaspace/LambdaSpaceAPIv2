@@ -14,6 +14,7 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
+	"github.com/lambdaspace/LambdaSpaceAPIv2/mqtt"
 )
 
 type PeopleNowPresent struct {
@@ -78,6 +79,7 @@ type DiscourseApi struct {
 }
 
 var (
+	statusChan      = make(chan int)
 	lastChange      *int64
 	peoplePresent   *int
 	spaceDescriptor SpaceDescriptor
@@ -97,7 +99,6 @@ func init() {
 		go updateStatus()
 		go getScheduledEvents()
 		for range time.Tick(time.Minute * 5) {
-			go updateStatus()
 			go getScheduledEvents()
 		}
 	}()
@@ -106,7 +107,6 @@ func init() {
 func check(err error) {
 	if err != nil {
 		log.Println(err)
-		// panic(err)
 	}
 }
 
@@ -153,14 +153,16 @@ func peopleInSpace() int {
 
 // Update the current status of the space
 func updateStatus() {
-	spaceDescriptor.Lock()
-	previewPeoplePresent := *peoplePresent
-	*peoplePresent = peopleInSpace()
-	*spaceStatus = *peoplePresent > 0
-	if previewPeoplePresent != *peoplePresent {
-		*lastChange = time.Now().Unix()
+	for numOfPeople := range statusChan {
+		spaceDescriptor.Lock()
+		previousPeoplePresent := *peoplePresent
+		*peoplePresent = numOfPeople
+		*spaceStatus = *peoplePresent > 0
+		if previousPeoplePresent != *peoplePresent {
+			*lastChange = time.Now().Unix()
+		}
+		spaceDescriptor.Unlock()
 	}
-	spaceDescriptor.Unlock()
 }
 
 // Get upcoming events
@@ -218,6 +220,7 @@ func spaceAPIRouteHandler(c echo.Context) error {
 
 func main() {
 	e := echo.New()
+	go mqtt.Main(statusChan)
 
 	// Echo middlewares
 	e.Use(middleware.Logger())
