@@ -139,18 +139,6 @@ func fetchHTTPResource(requestURL string) ([]byte, error) {
 	return responseBody, err
 }
 
-// Get number of people in space
-func peopleInSpace() int {
-	response, err := fetchHTTPResource("https://lambdaspace.gr/hackers.txt")
-	if err != nil {
-		log.Print(err)
-		return -1
-	}
-	data, err := strconv.Atoi(string(response))
-	check(err)
-	return data
-}
-
 // Update the current status of the space
 func updateStatus() {
 	for numOfPeople := range statusChan {
@@ -184,17 +172,17 @@ func getScheduledEvents() {
 		id := element.ID
 		slug := element.Slug
 		fields := strings.Fields(element.Title)
-		ryear, err := regexp.Compile(`^\d\d\/\d\d\/\d\d\d\d`)
+		yearRegexp, err := regexp.Compile(`^\d\d\/\d\d\/\d\d\d\d`)
 		check(err)
-		rhour, err := regexp.Compile(`^\d\d:\d\d`)
+		hourRegexp, err := regexp.Compile(`^\d\d:\d\d`)
 		check(err)
 
-		if ryear.MatchString(fields[0]) {
+		if yearRegexp.MatchString(fields[0]) {
 			event.Date = fields[0]
 			event.URL = fmt.Sprintf("https://community.lambdaspace.gr/t/%s/%v", slug, id)
-			if rhour.MatchString(fields[1]) {
+			if hourRegexp.MatchString(fields[1]) {
 				event.Begin = fields[1]
-				if fields[2] == "-" && rhour.MatchString(fields[3]) {
+				if fields[2] == "-" && hourRegexp.MatchString(fields[3]) {
 					event.End = fields[3]
 					event.Title = strings.Join(fields[4:], " ")
 				} else {
@@ -244,6 +232,14 @@ func main() {
 		spaceEvents.RLock()
 		defer spaceEvents.RUnlock()
 		return c.JSON(http.StatusOK, &spaceEvents)
+	})
+
+	// Legacy route to support migration from hackers.txt
+	// Route to serve hackers
+	e.GET("/api/v2.0/hackers", func(c echo.Context) error {
+		spaceEvents.RLock()
+		defer spaceEvents.RUnlock()
+		return c.String(http.StatusOK, strconv.Itoa(*peoplePresent))
 	})
 
 	// Add custom httpServer so we can add timeouts to requests
