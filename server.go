@@ -63,6 +63,7 @@ type HackerspaceEvents struct {
 	Date  string `json:"date"`
 	Begin string `json:"begin"`
 	End   string `json:"end"`
+	Url   string `json:"url"`
 }
 
 type DiscourseApi struct {
