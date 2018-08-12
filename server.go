@@ -170,8 +170,6 @@ func getScheduledEvents() {
 
 	response, err := fetchHTTPResource("https://community.lambdaspace.gr/c/events.json")
 
-	fmt.Printf("%s\n", response)
-
 	if err != nil {
 		log.Print(err)
 		return
