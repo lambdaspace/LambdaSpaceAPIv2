@@ -7,6 +7,7 @@ import (
 	"github.com/joeshaw/envdecode"
 )
 
+// Configuration stores application configuration options
 type Configuration struct {
 	Mqtt struct {
 		Broker struct {
