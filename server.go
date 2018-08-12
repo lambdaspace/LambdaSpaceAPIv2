@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -63,12 +64,15 @@ type HackerspaceEvents struct {
 	Date  string `json:"date"`
 	Begin string `json:"begin"`
 	End   string `json:"end"`
+	URL   string `json:"url"`
 }
 
 type DiscourseApi struct {
 	TopicList struct {
 		Topics []struct {
+			ID    int    `json:"id"`
 			Title string `json:"title"`
+			Slug  string `json:"slug"`
 		} `json:"topics"`
 	} `json:"topic_list"`
 }
@@ -165,6 +169,7 @@ func getScheduledEvents() {
 	ret := []HackerspaceEvents{}
 
 	response, err := fetchHTTPResource("https://community.lambdaspace.gr/c/events.json")
+
 	if err != nil {
 		log.Print(err)
 		return
@@ -174,6 +179,8 @@ func getScheduledEvents() {
 
 	for _, element := range dat.TopicList.Topics {
 		event := HackerspaceEvents{}
+		id := element.ID
+		slug := element.Slug
 		fields := strings.Fields(element.Title)
 		ryear, err := regexp.Compile(`^\d\d\/\d\d\/\d\d\d\d`)
 		check(err)
@@ -182,6 +189,7 @@ func getScheduledEvents() {
 
 		if ryear.MatchString(fields[0]) {
 			event.Date = fields[0]
+			event.URL = fmt.Sprintf("https://community.lambdaspace.gr/t/%s/%v", slug, id)
 			if rhour.MatchString(fields[1]) {
 				event.Begin = fields[1]
 				if fields[2] == "-" && rhour.MatchString(fields[3]) {
